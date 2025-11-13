@@ -49,6 +49,20 @@ export function IdentifyScreen() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const additionalImageRef = useRef<HTMLInputElement>(null);
 
+  // Extract a human-friendly hint from a filename (without extension, slug to words)
+  const nameHintFromFilename = (filename: string): string => {
+    try {
+      const base = filename.replace(/\.[^.]+$/i, ''); // strip extension
+      // Replace separators with spaces, collapse repeats, trim
+      return base
+        .replace(/[._-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    } catch {
+      return filename;
+    }
+  };
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -111,6 +125,14 @@ export function IdentifyScreen() {
       formData.append('image', primaryFile);
       // Pošalji sve slike u polju 'images' (ponovljivo)
       selectedFiles.forEach((f) => formData.append('images', f));
+
+      // (Hidden) Filename hints for backend to optionally use
+      formData.append('filename', primaryFile.name);
+      formData.append('nameHint', nameHintFromFilename(primaryFile.name));
+      selectedFiles.forEach((f) => {
+        formData.append('filenames', f.name);
+        formData.append('nameHints', nameHintFromFilename(f.name));
+      });
 
       // Dodaj organs parametre (ponovljivo)
       const organsToSend = selectedOrgans.length ? selectedOrgans : ['leaf'];
