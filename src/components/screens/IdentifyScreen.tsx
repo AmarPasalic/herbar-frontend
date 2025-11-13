@@ -212,7 +212,7 @@ export function IdentifyScreen() {
           })();
         setResult(identifiedPlant);
         setIsIdentifying(false);
-        toast.success('Biljka identificirana (offline)!', {
+        toast.success('Biljka identificirana!', {
           description: `${identifiedPlant.name} - ${identifiedPlant.confidence}% sigurnost`,
           icon: '🌿',
         });
@@ -307,7 +307,7 @@ export function IdentifyScreen() {
             };
           })();
         setResult(identifiedPlant);
-        toast.success('Biljka identificirana (offline)!', {
+        toast.success('Biljka identificirana!', {
           description: `${identifiedPlant.name} - ${identifiedPlant.confidence}% sigurnost`,
           icon: '🌿',
         });
@@ -335,7 +335,7 @@ export function IdentifyScreen() {
             };
           })();
         setResult(identifiedPlant);
-        toast.success('Biljka identificirana (offline)!', {
+        toast.success('Biljka identificirana!', {
           description: `${identifiedPlant.name} - ${identifiedPlant.confidence}% sigurnost`,
           icon: '🌿',
         });
@@ -678,7 +678,7 @@ export function IdentifyScreen() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
-                        <h3 className="text-green-900 dark:text-green-100">{result.name}</h3>
+                        {/* Naslov (common name) skriven po zahtjevu */}
                         <p className="text-sm italic text-green-700 dark:text-green-300">
                           {result.scientificName}
                         </p>
