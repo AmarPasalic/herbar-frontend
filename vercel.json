@@ -4,17 +4,12 @@
     "outputDirectory": "build",
     "rewrites": [
         {
-            "source": "/api/:path*",
-            "destination": "https://herbar-backend-7p73b09f8-pashas-projects-8b099908.vercel.app/api/:path*"
-        }
-    ],
-    "routes": [
-        {
-            "handle": "filesystem"
+            "source": "/api/(.*)",
+            "destination": "https://herbar-backend-7p73b09f8-pashas-projects-8b099908.vercel.app/api/$1"
         },
         {
-            "src": "/(.*)",
-            "dest": "/index.html"
+            "source": "/(.*)",
+            "destination": "/index.html"
         }
     ]
 }
