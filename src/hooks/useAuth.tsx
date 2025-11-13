@@ -37,16 +37,15 @@ const translateError = (error: string): string => {
     'Failed to fetch': 'Nije moguće povezati se sa serverom. Provjerite internet konekciju.',
     'Internal server error': 'Greška na serveru',
     'Bad request': 'Neispravni podaci',
-    'Unauthorized': 'Neovlašteni pristup',
+    'Unauthorized': 'Neovlašćeni pristup',
+    'Method Not Allowed': 'Pogrešna metoda. Provjerite endpoint.'
   };
 
-  // Provjeri da li error sadrži neku od poznatih poruka
   for (const [key, value] of Object.entries(errorMap)) {
     if (error.toLowerCase().includes(key.toLowerCase())) {
       return value;
     }
   }
-
   return error;
 };
 
@@ -56,76 +55,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing token on mount
     const storedToken = localStorage.getItem('auth_token');
     const storedUser = localStorage.getItem('auth_user');
-    
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
-    
     setIsLoading(false);
   }, []);
+
+  const safeParseJson = async (res: Response) => {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { error: text || `${res.status} ${res.statusText}` };
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
-        const errorMessage = translateError(data.error || data.message || `Greška: ${response.status}`);
-        throw new Error(errorMessage);
+        let msg = data.error || data.message || `${response.status} ${response.statusText}`;
+        if (response.status === 404) msg = 'Endpoint nije pronađen (404).';
+        if (response.status === 405) msg = 'Method Not Allowed';
+        throw new Error(translateError(msg));
       }
-      
+
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('auth_user', JSON.stringify(data.user));
-      
       setToken(data.token);
       setUser(data.user);
     } catch (error: any) {
-      throw new Error(translateError(error.message));
+      throw new Error(translateError(error.message || String(error)));
     }
   };
 
   const signup = async (email: string, password: string, name?: string, grade?: string, school?: string) => {
     try {
-      console.log('Pokušavam registraciju sa:', { email, password: '***' });
-      
       const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName: name, department: grade, school }),
       });
 
-      const data = await response.json();
-      console.log('Odgovor servera:', data);
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
-        const errorMessage = translateError(data.error || data.message || `Greška: ${response.status}`);
-        console.error('Greška pri registraciji:', errorMessage);
-        throw new Error(errorMessage);
+        let msg = data.error || data.message || `${response.status} ${response.statusText}`;
+        if (response.status === 404) msg = 'Endpoint nije pronađen (404).';
+        if (response.status === 405) msg = 'Method Not Allowed';
+        throw new Error(translateError(msg));
       }
-      
+
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('auth_user', JSON.stringify(data.user));
-      
       setToken(data.token);
       setUser(data.user);
-      
-      console.log('Registracija uspješna!');
     } catch (error: any) {
-      console.error('Error u signup funkciji:', error);
-      throw new Error(translateError(error.message));
+      throw new Error(translateError(error.message || String(error)));
     }
   };
 
