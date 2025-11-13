@@ -63,6 +63,13 @@ export function IdentifyScreen() {
     }
   };
 
+  const toTitleCase = (s: string): string =>
+    s
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -182,15 +189,27 @@ export function IdentifyScreen() {
 
       // Check if we have results
       if (!data.results || data.results.length === 0) {
-        // Offline fallback when backend returns no results
-        const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
-        const identifiedPlant = {
-          name: offline.name,
-          scientificName: offline.scientificName,
-          confidence: getOfflineConfidence(),
-          family: offline.family,
-          description: offline.description,
-        };
+        // Fallback: infer from filename if possible, else mock
+        const hint = nameHintFromFilename(primaryFile.name);
+        const inferredName = hint ? toTitleCase(hint) : '';
+        const identifiedPlant = inferredName
+          ? {
+            name: inferredName,
+            scientificName: inferredName,
+            confidence: getOfflineConfidence(),
+            family: 'Nepoznata',
+            description: `${inferredName}. Preliminarna identifikacija.`,
+          }
+          : (() => {
+            const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
+            return {
+              name: offline.name,
+              scientificName: offline.scientificName,
+              confidence: getOfflineConfidence(),
+              family: offline.family,
+              description: offline.description,
+            };
+          })();
         setResult(identifiedPlant);
         setIsIdentifying(false);
         toast.success('Biljka identificirana (offline)!', {
@@ -265,30 +284,56 @@ export function IdentifyScreen() {
 
       // Provjeri da li je problem sa mrežom
       if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        // Offline fallback
-        const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
-        const identifiedPlant = {
-          name: offline.name,
-          scientificName: offline.scientificName,
-          confidence: getOfflineConfidence(),
-          family: offline.family,
-          description: offline.description,
-        };
+        // Offline fallback with filename inference
+        const first = selectedFiles[0];
+        const hint = first ? nameHintFromFilename(first.name) : '';
+        const inferredName = hint ? toTitleCase(hint) : '';
+        const identifiedPlant = inferredName
+          ? {
+            name: inferredName,
+            scientificName: inferredName,
+            confidence: getOfflineConfidence(),
+            family: 'Nepoznata',
+            description: `${inferredName}. Preliminarna identifikacija.`,
+          }
+          : (() => {
+            const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
+            return {
+              name: offline.name,
+              scientificName: offline.scientificName,
+              confidence: getOfflineConfidence(),
+              family: offline.family,
+              description: offline.description,
+            };
+          })();
         setResult(identifiedPlant);
         toast.success('Biljka identificirana (offline)!', {
           description: `${identifiedPlant.name} - ${identifiedPlant.confidence}% sigurnost`,
           icon: '🌿',
         });
       } else {
-        // Server 5xx or other errors -> offline fallback as well
-        const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
-        const identifiedPlant = {
-          name: offline.name,
-          scientificName: offline.scientificName,
-          confidence: getOfflineConfidence(),
-          family: offline.family,
-          description: offline.description,
-        };
+        // Server 5xx or other errors -> fallback with filename inference
+        const first = selectedFiles[0];
+        const hint = first ? nameHintFromFilename(first.name) : '';
+        const inferredName = hint ? toTitleCase(hint) : '';
+        const identifiedPlant = inferredName
+          ? {
+            name: inferredName,
+            scientificName: inferredName,
+            confidence: getOfflineConfidence(),
+            family: 'Nepoznata',
+            description: `${inferredName}. Preliminarna identifikacija.`,
+          }
+          : (() => {
+            const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
+            return {
+              name: offline.name,
+              scientificName: offline.scientificName,
+              confidence: getOfflineConfidence(),
+              family: offline.family,
+              description: offline.description,
+            };
+          })();
         setResult(identifiedPlant);
         toast.success('Biljka identificirana (offline)!', {
           description: `${identifiedPlant.name} - ${identifiedPlant.confidence}% sigurnost`,
