@@ -11,6 +11,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Camera, Image as ImageIcon, Plus, Sparkles, X, Loader2, AlertCircle } from 'lucide-react';
 import { mockPlants } from '../../data/mockPlants';
+import { lookupPlantByHint } from '../../data/plantKnowledge';
 import { computePlantSavePoints, addPoints, getBasicPhotoPoints, computePlantSaveBonusPoints } from '../../utils/points';
 import { LOW_CONFIDENCE_THRESHOLD, RARE_CONFIDENCE_THRESHOLD, getOfflineConfidence } from '../../config/gamification';
 
@@ -193,13 +194,25 @@ export function IdentifyScreen() {
         const hint = nameHintFromFilename(primaryFile.name);
         const inferredName = hint ? toTitleCase(hint) : '';
         const identifiedPlant = inferredName
-          ? {
-            name: inferredName,
-            scientificName: inferredName,
-            confidence: getOfflineConfidence(),
-            family: 'Nepoznata',
-            description: `${inferredName}. Preliminarna identifikacija.`,
-          }
+          ? (() => {
+              const info = lookupPlantByHint(inferredName.toLowerCase());
+              if (info) {
+                return {
+                  name: info.common,
+                  scientificName: info.scientific,
+                  confidence: getOfflineConfidence(),
+                  family: info.family,
+                  description: info.description,
+                };
+              }
+              return {
+                name: inferredName,
+                scientificName: inferredName,
+                confidence: getOfflineConfidence(),
+                family: 'Nepoznata',
+                description: `${inferredName}. Preliminarna identifikacija.`,
+              };
+            })()
           : (() => {
             const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
             return {
@@ -289,13 +302,25 @@ export function IdentifyScreen() {
         const hint = first ? nameHintFromFilename(first.name) : '';
         const inferredName = hint ? toTitleCase(hint) : '';
         const identifiedPlant = inferredName
-          ? {
-            name: inferredName,
-            scientificName: inferredName,
-            confidence: getOfflineConfidence(),
-            family: 'Nepoznata',
-            description: `${inferredName}. Preliminarna identifikacija.`,
-          }
+          ? (() => {
+              const info = lookupPlantByHint(inferredName.toLowerCase());
+              if (info) {
+                return {
+                  name: info.common,
+                  scientificName: info.scientific,
+                  confidence: getOfflineConfidence(),
+                  family: info.family,
+                  description: info.description,
+                };
+              }
+              return {
+                name: inferredName,
+                scientificName: inferredName,
+                confidence: getOfflineConfidence(),
+                family: 'Nepoznata',
+                description: `${inferredName}. Preliminarna identifikacija.`,
+              };
+            })()
           : (() => {
             const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
             return {
@@ -317,13 +342,25 @@ export function IdentifyScreen() {
         const hint = first ? nameHintFromFilename(first.name) : '';
         const inferredName = hint ? toTitleCase(hint) : '';
         const identifiedPlant = inferredName
-          ? {
-            name: inferredName,
-            scientificName: inferredName,
-            confidence: getOfflineConfidence(),
-            family: 'Nepoznata',
-            description: `${inferredName}. Preliminarna identifikacija.`,
-          }
+          ? (() => {
+              const info = lookupPlantByHint(inferredName.toLowerCase());
+              if (info) {
+                return {
+                  name: info.common,
+                  scientificName: info.scientific,
+                  confidence: getOfflineConfidence(),
+                  family: info.family,
+                  description: info.description,
+                };
+              }
+              return {
+                name: inferredName,
+                scientificName: inferredName,
+                confidence: getOfflineConfidence(),
+                family: 'Nepoznata',
+                description: `${inferredName}. Preliminarna identifikacija.`,
+              };
+            })()
           : (() => {
             const offline = mockPlants[Math.floor(Math.random() * mockPlants.length)];
             return {
