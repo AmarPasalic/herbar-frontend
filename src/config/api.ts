@@ -21,9 +21,13 @@ const ENV_API: string | undefined = ENV?.VITE_API_URL || ENV?.VITE_API_BASE_URL;
 // Auto-detect if running on localhost (used only for logging now)
 const runningOnLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
-// Prefer: ENV override > PRODUCTION default.
+// Optional proxy mode: when enabled, use relative /api to avoid CORS on hosted frontend.
+// Enable by setting VITE_PROXY_API=true in the frontend env (e.g., Vercel Project Env).
+const PROXY_MODE = !!ENV?.VITE_PROXY_API && String(ENV?.VITE_PROXY_API).toLowerCase() !== 'false' && String(ENV?.VITE_PROXY_API) !== '0';
+
+// Prefer: ENV override > Proxy mode (relative) > PRODUCTION default.
 // If you want to use local backend, set VITE_API_BASE_URL=http://localhost:3001
-export const API_BASE_URL: string = ENV_API || PRODUCTION_API_URL;
+export const API_BASE_URL: string = ENV_API || (PROXY_MODE ? '' : PRODUCTION_API_URL);
 
 // PlantNet API konfiguracija (koristi se kroz backend proxy)
 export const PLANTNET_CONFIG = {
@@ -32,7 +36,11 @@ export const PLANTNET_CONFIG = {
   PROJECT: 'all',
 };
 
-const mode = ENV_API ? `ENV OVERRIDE (${ENV?.VITE_API_URL ? 'VITE_API_URL' : 'VITE_API_BASE_URL'})` : 'PRODUCTION (default)';
+const mode = ENV_API
+  ? `ENV OVERRIDE (${ENV?.VITE_API_URL ? 'VITE_API_URL' : 'VITE_API_BASE_URL'})`
+  : PROXY_MODE
+    ? 'PROXY MODE (relative /api)'
+    : 'PRODUCTION (default)';
 // Helpful logs during development
 console.log(`🌿 API Mode: ${mode}`);
 console.log(`🔗 API URL: ${API_BASE_URL}`);
