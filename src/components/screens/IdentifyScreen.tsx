@@ -27,6 +27,8 @@ export function IdentifyScreen() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Allow user to hint PlantNet which organs are in the photos
+  const [selectedOrgans, setSelectedOrgans] = useState<string[]>(['leaf']);
   const [result, setResult] = useState<{
     name: string;
     scientificName: string;
@@ -34,7 +36,15 @@ export function IdentifyScreen() {
     family: string;
     description: string;
   } | null>(null);
+  const [candidates, setCandidates] = useState<Array<{
+    name: string;
+    scientificName: string;
+    confidence: number;
+    family: string;
+    description: string;
+  }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLowConfidence, setIsLowConfidence] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const additionalImageRef = useRef<HTMLInputElement>(null);
@@ -92,18 +102,19 @@ export function IdentifyScreen() {
       // NOVO: Koristi backend proxy umjesto direktnog PlantNet API poziva
       const formData = new FormData();
 
-      // Backend očekuje jedno polje 'image' (file). Uzmemo prvu sliku.
+      // Uzmemo prvu sliku kao primarnu, ali pošaljemo SVE slike backendu za veću tačnost
       const primaryFile = selectedFiles[0];
       if (!primaryFile) {
         throw new Error('Nije odabrana slika.');
       }
       // Primary expected field
       formData.append('image', primaryFile);
-      // Compatibility for backends expecting 'images'
-      formData.append('images', primaryFile);
+      // Pošalji sve slike u polju 'images' (ponovljivo)
+      selectedFiles.forEach((f) => formData.append('images', f));
 
-      // Dodaj organs parametar (može biti ponovljiv na backendu)
-      formData.append('organs', 'leaf');
+      // Dodaj organs parametre (ponovljivo)
+      const organsToSend = selectedOrgans.length ? selectedOrgans : ['leaf'];
+      organsToSend.forEach((org) => formData.append('organs', org));
 
       // Pozovi backend proxy endpoint
       const response = await fetch(`${API_BASE_URL}/api/identify`, {
@@ -167,19 +178,35 @@ export function IdentifyScreen() {
         return;
       }
 
-      // Get the best match
+      // Kandidati: uzmi top 3 rezultata
+      const top = data.results.slice(0, 3);
+      const mapped = top.map((item: any) => {
+        const conf = Math.round(item.score * 100);
+        const commonNames = item.species.commonNames || [];
+        const commonName = commonNames.length > 0 ? commonNames[0] : item.species.scientificNameWithoutAuthor;
+        const fam = item.species.family?.scientificNameWithoutAuthor || 'Nepoznata';
+        const desc = `${commonName} (${item.species.scientificNameWithoutAuthor}), porodica ${fam}. Preliminarna identifikacija sa ${conf}% sigurnosti.`;
+        return {
+          name: commonName,
+          scientificName: item.species.scientificNameWithoutAuthor,
+          confidence: conf,
+          family: fam,
+          description: desc,
+        };
+      });
+      setCandidates(mapped);
+
+      // Odaberi najbolji pogodak
       const bestMatch = data.results[0];
       const confidence = Math.round(bestMatch.score * 100);
 
       // Check if confidence is too low (configurable threshold)
       if (confidence < LOW_CONFIDENCE_THRESHOLD) {
-        setError(`AI nije dovoljno siguran u prepoznavanje (${confidence}% sigurnost). Molimo pokušajte sa jasnijom fotografijom ili dodajte više slika različitih dijelova biljke.`);
+        setIsLowConfidence(true);
+        setError(`AI nije dovoljno siguran u prepoznavanje (${confidence}% sigurnost). Dodajte slike cvijeta/lista/ploda ili pokušajte ponovo.`);
         setIsIdentifying(false);
-
-        toast.error('Niska sigurnost prepoznavanja', {
-          description: `Samo ${confidence}% sigurnost. Pokušajte sa boljom fotografijom.`,
-        });
-        return;
+        toast.error('Niska sigurnost prepoznavanja', { description: `Samo ${confidence}% sigurnost. Dodajte još slika i označite dijelove biljke.` });
+        // Ne vraćamo odmah; ipak prikaži rezultat i kandidate da korisnik eventualno potvrdi ručno
       }
 
       // Get common name (use first common name if available, otherwise use scientific name)
@@ -255,8 +282,10 @@ export function IdentifyScreen() {
     setSelectedImages([]);
     setSelectedFiles([]);
     setResult(null);
+    setCandidates([]);
     setIsIdentifying(false);
     setError(null);
+    setIsLowConfidence(false);
   };
 
   const handleSavePlant = async () => {
@@ -502,6 +531,30 @@ export function IdentifyScreen() {
               </div>
             )}
 
+            {selectedImages.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Dijelovi biljke:</span>
+                {['leaf', 'flower', 'fruit', 'bark'].map((org) => {
+                  const active = selectedOrgans.includes(org);
+                  return (
+                    <Button
+                      key={org}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      onClick={() => {
+                        setSelectedOrgans((prev) =>
+                          prev.includes(org) ? prev.filter((o) => o !== org) : [...prev, org]
+                        );
+                      }}
+                    >
+                      {org}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+
             {!result ? (
               <div className="space-y-4">
                 {error && (
@@ -510,6 +563,18 @@ export function IdentifyScreen() {
                     <AlertTitle>Problem sa prepoznavanjem</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
+                )}
+
+                {isLowConfidence && (
+                  <Card className="p-3 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900">
+                    <div className="text-sm text-amber-900 dark:text-amber-200 space-y-2">
+                      <p>Za bolju tačnost, dodajte još fotografija i označite dijelove biljke (npr. cvijet i list).</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => additionalImageRef.current?.click()}>Dodaj fotografije</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setSelectedOrgans((prev) => Array.from(new Set([...prev, 'flower', 'leaf'])))}>Označi cvijet i list</Button>
+                      </div>
+                    </div>
+                  </Card>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
@@ -565,6 +630,28 @@ export function IdentifyScreen() {
                     </div>
                   </div>
                 </Card>
+
+                {candidates.length > 1 && (
+                  <Card className="p-3">
+                    <p className="text-sm font-medium mb-2">Možda ste mislili:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {candidates.slice(1).map((c, idx) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          className="justify-start h-auto py-2"
+                          onClick={() => setResult(c)}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium leading-none">{c.name}</div>
+                            <div className="text-xs text-muted-foreground italic">{c.scientificName}</div>
+                            <div className="text-xs text-muted-foreground">{c.family} • {c.confidence}%</div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </Card>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <Button
